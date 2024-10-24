@@ -2018,13 +2018,13 @@ MemCtrl::CtrlStats::regStats()
     // ARYA : Initialising the WrQOccupancy
     WrQOccupancyDist
         .init(0 /*base value*/,
-		writeBufferSize /*last value*/,
+		ctrl.writeBufferSize /*last value*/,
 		1 /*bin size*/);
     
     // ARYA : Initialising the RdQOccupancy
     RdQOccupancyDist
         .init(0 /*base value*/,
-		readBufferSize /*last value*/,
+		ctrl.readBufferSize /*last value*/,
 		1 /*bin size*/);
 
     for (int i = 0; i < max_requestors; i++) {
