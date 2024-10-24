@@ -586,6 +586,8 @@ class MemCtrl : public qos::MemCtrl
         // Average queue lengths
         statistics::Average avgRdQLen;
         statistics::Average avgWrQLen;
+	statistics::Distribution WrQOccupancyDist; 	// ARYA : Added support to print distribution of Write Queue Occupancy
+	statistics::Distribution RdQOccupancyDist; 	// ARYA : Added support to print distribution of Read Queue Occupancy
 
         statistics::Scalar numRdRetry;
         statistics::Scalar numWrRetry;

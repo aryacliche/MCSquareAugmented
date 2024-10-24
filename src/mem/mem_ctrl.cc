@@ -280,6 +280,7 @@ MemCtrl::addToReadQueue(PacketPtr pkt,
 
             // Update stats
             stats.avgRdQLen = totalReadQueueSize + respQueue.size();
+            stats.RdQOccupancyDist.sample(totalReadQueueSize + respQueue.size()); 	// ARYA : Logging RdQOccupancy's samples
         }
 
         // Starting address of next memory pkt (aligned to burst boundary)
@@ -354,6 +355,7 @@ MemCtrl::addToWriteQueue(PacketPtr pkt, unsigned int pkt_count,
 
             // Update stats
             stats.avgWrQLen = totalWriteQueueSize;
+            stats.WrQOccupancyDist.sample(totalWriteQueueSize);		// ARYA : Logging WrQOccupancy's samples
 
         } else {
             DPRINTF(MemCtrl,
@@ -1862,13 +1864,19 @@ MemCtrl::CtrlStats::CtrlStats(MemCtrl &_ctrl)
 
     ADD_STAT(neitherReadNorWriteReqs, statistics::units::Count::get(),
              "Number of requests that are neither read nor write"),
-
+    
+    // ARYA : Printing the distribution statistics
     ADD_STAT(avgRdQLen, statistics::units::Rate<
                 statistics::units::Count, statistics::units::Tick>::get(),
              "Average read queue length when enqueuing"),
     ADD_STAT(avgWrQLen, statistics::units::Rate<
                 statistics::units::Count, statistics::units::Tick>::get(),
              "Average write queue length when enqueuing"),
+
+    ADD_STAT(RdQOccupancyDist, statistics::units::Count::get(),
+             "Distribution of read queue length when enqueueing"),
+    ADD_STAT(WrQOccupancyDist, statistics::units::Count::get(),
+             "Distribution of write queue length when enqueueing"),
 
     ADD_STAT(numRdRetry, statistics::units::Count::get(),
              "Number of times read queue was full causing retry"),
@@ -2006,6 +2014,18 @@ MemCtrl::CtrlStats::regStats()
     requestorWriteAvgLat
         .flags(nonan)
         .precision(2);
+
+    // ARYA : Initialising the WrQOccupancy
+    WrQOccupancyDist
+        .init(0 /*base value*/,
+		writeBufferSize /*last value*/,
+		1 /*bin size*/);
+    
+    // ARYA : Initialising the RdQOccupancy
+    RdQOccupancyDist
+        .init(0 /*base value*/,
+		readBufferSize /*last value*/,
+		1 /*bin size*/);
 
     for (int i = 0; i < max_requestors; i++) {
         const std::string requestor = ctrl.system()->getRequestorName(i);

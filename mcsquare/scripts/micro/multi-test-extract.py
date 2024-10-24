@@ -53,6 +53,7 @@ file2="Touched memcpy"
 expts=["Memcpy", "Touched memcpy", "zIO", "(MC)^2"]
 def main():
     file_paths = sys.argv[1].split()
+#    print(f"file_paths = {file_paths}")
     '''
     experiment_cycles = extract_cycles(file_path)
     print("Max CPU cycles")
@@ -70,6 +71,8 @@ def main():
         print()
     print()
     '''
+#    print(f"file_paths[0] = {file_paths[0]}")
+#    print(f"file_paths[1] = {file_paths[1]}")
     # Extract data from files and place into dict
     experiment_ticks_file1 = extract_ticks("results/micro/" + file_paths[0] + "/stats.txt")
     experiment_ticks_file2 = extract_ticks("results/micro/" + file_paths[1] + "/stats.txt")
@@ -77,7 +80,11 @@ def main():
     expt_nano = {}
     for expt in file1 + [file2]:
         expt_nano[expt] = []
-    
+   
+#    print("First experiment_ticks_file1", len(experiment_ticks_file1))
+#    print("First experiment_ticks_file2", len(experiment_ticks_file2))
+#    print("First sizes", len(sizes))
+#    print("First file1", len(file1))
     i = 0
     for size in sizes:
         for expt in file1:
