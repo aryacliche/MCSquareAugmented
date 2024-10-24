@@ -184,6 +184,7 @@ extract_micro_rand:
 PROTOBUF_TESTS ?= protobuf-mc protobuf protobuf-zio
 PB_CTT_SIZE=1024 2048 4096
 PB_FLUSH_FRAC=0.1 0.25 0.5 0.75 0.9
+
 launch_protobuf:
 	sudo ls; \
 	$(MAKE) compile_gem5; \
@@ -202,6 +203,24 @@ launch_protobuf:
 	$(MAKE) single_launch_gem5 TEST=protobuf/protobuf-zio & \
 	wait;
 	$(MAKE) -s extract_protobuf > ${RESULTS}/figure_20.txt;
+
+launch_protobuf_MCSquareOnly:
+	# Here we don't care about changing the copy flush fraction really. We just want a feel for it.
+	sudo ls; \
+	$(MAKE) compile_gem5; \
+	for ctt_frac in ${PB_FLUSH_FRAC}; do \
+		$(MAKE) single_launch_gem5 TEST=protobuf/protobuf-mc-1024-$${ctt_frac} \
+			SCRIPT=./scripts/protobuf/protobuf-mc-run.sh CTT_FREE_SIZE=1 \
+			CTT_SIZE=1024 CTT_FRAC=$${ctt_frac} CTT_LAT="646ps" & \
+	done; \
+	wait;
+
+launch_protobuf_Others:
+	sudo ls; \
+	$(MAKE) compile_gem5; \
+	$(MAKE) single_launch_gem5 TEST=protobuf/protobuf & \
+	$(MAKE) single_launch_gem5 TEST=protobuf/protobuf-zio & \
+	wait;
 
 extract_protobuf:
 	python3 ./scripts/protobuf/protobuf-extract.py "${PB_CTT_SIZE}" "${PB_FLUSH_FRAC}" ${FIGURES}/figure_14.png
