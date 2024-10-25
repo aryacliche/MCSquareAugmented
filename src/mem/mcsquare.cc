@@ -35,6 +35,10 @@ MCSquare::insertEntry(Addr dest, Addr src, uint64_t size)
 {
     if(size <= 0)
         return;
+    // ARYA : [OFFSET_STUDY] Since this function is called every time we get a valid CTT entry, this is the perfect place to measure the number of mis-aligned CTT entries
+    int64_t isMisaligned = ((dest % 64) == (src % 64)) ? 0 : 1;
+    // ARYA : [OFFSET_STUDY] Gotta find a way to add to this histrogram brooo
+    stats.numMisalignedReqs.sample(isMisaligned); 
 
     /*
      * Steps for insertion:
@@ -657,6 +661,9 @@ MCSquare::CtrlStats::CtrlStats(MCSquare &_ctrl)
              "Amount (in bytes) of src data written by bounce"),
     ADD_STAT(srcWritesBlocked, statistics::units::Count::get(),
              "Number of writes to src blocked"),
+    // ARYA : [OFFSET_STUDY] Displaying the final statistics
+    ADD_STAT(numMisalignedReqs, statistics::units::Count::get(),
+             "Number of CTT entries that are misaligned"),
     ADD_STAT(memElideBlockedCTTFull, statistics::units::Count::get(),
              "Number of mem elides blocked due to CTT being full")
              
@@ -667,6 +674,12 @@ void
 MCSquare::CtrlStats::regStats()
 {
     using namespace statistics;
+
+    // ARYA : [OFFSET_STUDY] Initialising statistics measure
+    numMisalignedReqs
+	.init(0 /*base value*/,
+		1 /* max value*/,
+		1 /*bucket size*/);
 }
 
 } // namespace memory
