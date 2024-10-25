@@ -1697,6 +1697,9 @@ BaseCache::invalidateBlock(CacheBlk *blk)
 void
 BaseCache::evictBlock(CacheBlk *blk, PacketList &writebacks)
 {
+    // SARVADNYA : [DEADBLOCK_STUDY] since the block is supposed to be evicted, we log the number of refCounts it got. Note that every single blk will have refCount of at least 1 since insertion results in a refCount.
+    stats.refCountBeforeEvict.sample(blk->getRefCount());
+
     PacketPtr pkt = evictBlock(blk);
     if (pkt) {
         writebacks.push_back(pkt);
@@ -2124,6 +2127,8 @@ BaseCache::CacheCmdStats::regStatsFromParent()
         .init(max_requestors)
         .flags(total | nozero | nonan)
         ;
+
+
     for (int i = 0; i < max_requestors; i++) {
         missLatency.subname(i, system->getRequestorName(i));
     }
@@ -2221,6 +2226,9 @@ BaseCache::CacheCmdStats::regStatsFromParent()
 BaseCache::CacheStats::CacheStats(BaseCache &c)
     : statistics::Group(&c), cache(c),
 
+    // SARVADNYA : [DEADBLOCK_STUDY] Printing the stats
+    ADD_STAT(refCountBeforeEvict, statistics::units::Count::get(),
+               "refCounts for CacheBlk before eviction"),
     ADD_STAT(demandHits, statistics::units::Count::get(),
              "number of demand (read+write) hits"),
     ADD_STAT(overallHits, statistics::units::Count::get(),
@@ -2373,6 +2381,12 @@ BaseCache::CacheStats::regStats()
     for (int i = 0; i < max_requestors; i++) {
         overallHitLatency.subname(i, system->getRequestorName(i));
     }
+    
+    // SARVADNYA : [DEADBLOCK_STUDY] Initialising our distribution
+    refCountBeforeEvict.
+	    init(0 /* lowest value*/, 
+			    10 /* highest value(honestly just putting it as 10 for sake of)*/,
+			    1 /*bucket size*/);
 
     demandAccesses.flags(total | nozero | nonan);
     demandAccesses = demandHits + demandMisses;

@@ -1130,7 +1130,11 @@ class BaseCache : public ClockedObject
         /** The average overall latency of an MSHR miss. */
         statistics::Formula overallAvgMshrUncacheableLatency;
 
-        /** Number of replacements of valid blocks. */
+	// SARVADNYA : [DEADBLOCK_STUDY] Adding a Distribution
+	/** The dist of references each cache blocks got before they were evicted. */
+	statistics::Distribution refCountBeforeEvict;
+        
+	/** Number of replacements of valid blocks. */
         statistics::Scalar replacements;
 
         /** Number of data expansions. */
