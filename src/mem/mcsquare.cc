@@ -37,8 +37,8 @@ MCSquare::insertEntry(Addr dest, Addr src, uint64_t size)
         return;
     // ARYA : [OFFSET_STUDY] Since this function is called every time we get a valid CTT entry, this is the perfect place to measure the number of mis-aligned CTT entries
     int64_t isMisaligned = ((dest % 64) == (src % 64)) ? 0 : 1;
-    // ARYA : [OFFSET_STUDY] Gotta find a way to add to this histrogram brooo
-    stats.numMisalignedReqs.sample(isMisaligned); 
+    for (auto i = 0 ; i < size / 64 ; i ++) // ARYA : [OFFSET_STUDY] We add as many samples to the metric as are the number of cachelines in question
+	    stats.numMisalignedReqs.sample(isMisaligned); 
 
     /*
      * Steps for insertion:
