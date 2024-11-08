@@ -52,6 +52,7 @@
 #include "base/compiler.hh"
 #include "base/types.hh"
 #include "mem/cache/base.hh"
+#include "mem/mcsquare.h"
 #include "mem/packet.hh"
 
 namespace gem5
@@ -71,6 +72,8 @@ class Cache : public BaseCache
      * This cache should allocate a block on a line-sized write miss.
      */
     const bool doFastWrites;
+    
+    const bool contains_CTT_and_Logic; // ARYA : Used to distinguish between L1 and LLC
 
     /**
      * Store the outstanding requests that we are expecting snoop
@@ -158,6 +161,8 @@ class Cache : public BaseCache
     bool isCachedAbove(PacketPtr pkt, bool is_timing = true);
 
   public:
+    MCSquare_CTT *mcsquare_ctt;
+
     /** Instantiates a basic cache object. */
     Cache(const CacheParams &p);
 

@@ -61,7 +61,7 @@
 #include "mem/cache/tags/base.hh"
 #include "mem/cache/write_queue_entry.hh"
 #include "mem/request.hh"
-#include "mem/mcsquare.h"
+#include "mem/mcsquare_ctt.h"
 #include "params/Cache.hh"
 
 namespace gem5
@@ -69,7 +69,9 @@ namespace gem5
 
 Cache::Cache(const CacheParams &p)
     : BaseCache(p, p.system->cacheLineSize()),
-      doFastWrites(true)
+      doFastWrites(true), 
+	contains_CTT_and_Logic(p.contains_CTT_and_Logic),
+    mcsquare_ctt(p.mcsquare_ctt)
 {
     assert(p.tags);
     assert(p.replacement_policy);
@@ -430,10 +432,65 @@ Cache::handleTimingReqMiss(PacketPtr pkt, CacheBlk *blk, Tick forward_time,
     BaseCache::handleTimingReqMiss(pkt, mshr, blk, forward_time, request_time);
 }
 
+void Cache::clearCTT() {
+    // Start freeing CTT entries if needed
+    if(mcsquare_ctt->getCTTSize() >= mcsquare_ctt->ctt_free_frac * mcsquare_ctt->getMaxCTTSize() &&
+        mcsquare_ctt->ctt_freeing.size() < mcsquare_ctt->ctt_freeing_max) {
+        Addr candidate = mcsquare_ctt->getAddrToFree(getAddrRanges());
+        if(candidate) {
+            DPRINTF(MCSquare, "%d exceeds threshold of CTT size %d! Freeing entries; Candidate %lx\n", 
+                    mcsquare_ctt->getCTTSize(), (int)(mcsquare_ctt->ctt_free_frac * 
+                    mcsquare_ctt->getMaxCTTSize()), candidate);
+
+            unsigned size = 64;
+            uint32_t burst_size = dram->bytesPerBurst();
+            unsigned offset = candidate & (burst_size - 1);
+            unsigned int pkt_count = divCeil(offset + size, burst_size);
+
+            if (readQueueFull(pkt_count)) {
+                DPRINTF(MCSquare, "Trying to clear CTT but read queue full\n");
+                return;
+            }
+
+            // Create read to src request
+            auto req = std::make_shared<Request>(candidate, 64, 
+                Request::MEM_ELIDE_WRITE_SRC, Request::funcRequestorId);
+            auto bouncePkt = Packet::createRead(req);
+            bouncePkt->allocate();
+
+            mcsquare_ctt->ctt_freeing[candidate] = -1;
+
+            if (!addToReadQueue(bouncePkt, pkt_count, dram)) {
+                // If we are not already scheduled to get a request out of the
+                // queue, do so now
+                if (!nextReqEvent.scheduled()) {
+                    DPRINTF(MemCtrl, "Request scheduled immediately\n");
+                    schedule(nextReqEvent, curTick());
+                }
+            }
+        }
+    }
+}
+
 void
 Cache::recvTimingReq(PacketPtr pkt)
 {
     DPRINTF(CacheTags, "%s tags:\n%s\n", __func__, tags->print());
+
+    // ARYA : If this is the LLC, we will deal with MCSquare stuff differently.
+    if (isMCSquare(pkt) && contains_CTT_and_Logic){
+    	// ARYA_TODO : Take stuff from mem_ctrl.cc's recvTimingReq
+        if(pkt->req->getFlags() & Request::MEM_ELIDE) {
+            mcsquare_ctt->insertEntry(pkt->getAddr(), 
+                pkt->req->_paddr_src, pkt->req->getSize());
+            mcsquare_ctt->stats.sizeElided += pkt->req->getSize();
+        }
+        else if(pkt->req->getFlags() & Request::MEM_ELIDE_FREE)
+            mcsquare_ctt->deleteEntry(pkt->getAddr(), pkt->req->getSize());
+
+        // ARYA: We clear the CTT?
+        clearCTT();   
+    }
 
     promoteWholeLineWrites(pkt);
 

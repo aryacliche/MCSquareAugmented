@@ -407,7 +407,7 @@ void
 MemCtrl::checkBounceTable() {
     for(auto i = mcsquare->m_bpq.begin(); i != mcsquare->m_bpq.end();) {
         MCSquare::Types type = mcsquare->contains(i->first, 64);
-        //if(type != MCSquare::Types::TYPE_SRC) {
+        
         if(mcsquare->m_bpq.getPkts(i->first) == 0 || 
             type != MCSquare::Types::TYPE_SRC) {
             auto req = std::make_shared<Request>(i->first, 
@@ -457,51 +457,11 @@ MemCtrl::checkBounceTable() {
     }
 }
 
-void MemCtrl::clearCTT() {
-    // Start freeing CTT entries if needed
-    if(mcsquare->getCTTSize() >= mcsquare->ctt_free_frac * mcsquare->getMaxCTTSize() &&
-        mcsquare->ctt_freeing.size() < mcsquare->ctt_freeing_max) {
-        Addr candidate = mcsquare->getAddrToFree(getAddrRanges());
-        if(candidate) {
-            DPRINTF(MCSquare, "%d exceeds threshold of CTT size %d! Freeing entries; Candidate %lx\n", 
-                    mcsquare->getCTTSize(), (int)(mcsquare->ctt_free_frac * 
-                    mcsquare->getMaxCTTSize()), candidate);
-
-            unsigned size = 64;
-            uint32_t burst_size = dram->bytesPerBurst();
-            unsigned offset = candidate & (burst_size - 1);
-            unsigned int pkt_count = divCeil(offset + size, burst_size);
-
-            if (readQueueFull(pkt_count)) {
-                DPRINTF(MCSquare, "Trying to clear CTT but read queue full\n");
-                return;
-            }
-
-            // Create read to src request
-            auto req = std::make_shared<Request>(candidate, 64, 
-                Request::MEM_ELIDE_WRITE_SRC, Request::funcRequestorId);
-            auto bouncePkt = Packet::createRead(req);
-            bouncePkt->allocate();
-
-            mcsquare->ctt_freeing[candidate] = -1;
-
-            if (!addToReadQueue(bouncePkt, pkt_count, dram)) {
-                // If we are not already scheduled to get a request out of the
-                // queue, do so now
-                if (!nextReqEvent.scheduled()) {
-                    DPRINTF(MemCtrl, "Request scheduled immediately\n");
-                    schedule(nextReqEvent, curTick());
-                }
-            }
-        }
-    }
-}
-
 bool
 MemCtrl::canHandleMCPkt(PacketPtr pkt, bool &canHandle) 
 {
-    if(isMCSquare(pkt)) {
-        // See if this memctrl owns pkt location
+    if(isMCSquare(pkt)) { 
+        // See if this memctrl owns pkt location // ARYA [?] This won't be relevant to LLC
         bool weContain = false;
         AddrRangeList addrList = getAddrRanges();
         for(auto i = addrList.begin(); i != addrList.end(); ++i)
@@ -573,17 +533,11 @@ MemCtrl::recvTimingReq(PacketPtr pkt)
     prevArrival = curTick();
 
     if(isMCSquare(pkt)) {
-        if(pkt->mc_dest_offset >= 100) {
+        if(pkt->mc_dest_offset >= 100) { // ARYA [?] Why the fuck is there is a 100?
             bool canHandle = pkt->mc_dest_offset - 100;
             return canHandleMCPkt(pkt, canHandle);
         }
-        if(pkt->req->getFlags() & Request::MEM_ELIDE) {
-            mcsquare->insertEntry(pkt->getAddr(), 
-                pkt->req->_paddr_src, pkt->req->getSize());
-            mcsquare->stats.sizeElided += pkt->req->getSize();
-        }
-        else if(pkt->req->getFlags() & Request::MEM_ELIDE_FREE)
-            mcsquare->deleteEntry(pkt->getAddr(), pkt->req->getSize());
+        
         checkBounceTable();
         // See if we're responsible for sending a response back
         bool weContain = false;
@@ -603,7 +557,6 @@ MemCtrl::recvTimingReq(PacketPtr pkt)
             // is still having a pointer to it
             pendingDelete.reset(pkt);
         }
-        clearCTT();
         return true;
     }
 

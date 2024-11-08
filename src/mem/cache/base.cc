@@ -308,7 +308,7 @@ BaseCache::handleTimingReqMiss(PacketPtr pkt, MSHR *mshr, CacheBlk *blk,
 {
     if (writeAllocator &&
         pkt && pkt->isWrite() && !pkt->req->isUncacheable() && 
-        !(isMCSquare(pkt))) {
+        !(isMCSquare(pkt))) { // ARYA [?] : Nah MCSquare won't do this
         writeAllocator->updateMode(pkt->getAddr(), pkt->getSize(),
                                    pkt->getBlockAddr(blkSize));
     }
@@ -429,7 +429,7 @@ BaseCache::recvTimingReq(PacketPtr pkt)
         PacketList writebacks;
         // Note that lat is passed by reference here. The function
         // access() will set the lat value.
-        satisfied = access(pkt, blk, lat, writebacks);
+        satisfied = access(pkt, blk, lat, writebacks); // ARYA [?] MCSquare will always return False to this
 
         // After the evicted blocks are selected, they must be forwarded
         // to the write buffer to ensure they logically precede anything
@@ -458,7 +458,7 @@ BaseCache::recvTimingReq(PacketPtr pkt)
         }
 
         handleTimingReqHit(pkt, blk, request_time);
-    } else {
+    } else { 		// ARYA [?] MCsquare will therefore always be taken care of by handleTimingReqMiss
         handleTimingReqMiss(pkt, blk, forward_time, request_time);
 
         ppMiss->notify(pkt);

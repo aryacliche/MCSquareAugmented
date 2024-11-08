@@ -179,6 +179,8 @@ class Cache(BaseCache):
     cxx_header = "mem/cache/cache.hh"
     cxx_class = "gem5::Cache"
 
+    contains_CTT_and_Logic = Param.Bool(False, "Whether the Cache should contain the CTT")
+
 
 class NoncoherentCache(BaseCache):
     type = "NoncoherentCache"
