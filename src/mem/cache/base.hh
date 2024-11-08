@@ -68,6 +68,7 @@
 #include "mem/packet_queue.hh"
 #include "mem/qport.hh"
 #include "mem/request.hh"
+#include "mem/mcsquare.h"
 #include "params/WriteAllocator.hh"
 #include "sim/clocked_object.hh"
 #include "sim/eventq.hh"
@@ -105,6 +106,8 @@ class BaseCache : public ClockedObject
     };
 
   public:
+    MCSquare_CTT* mcsquare_ctt; // ARYA : Istg this better work. We are adding the CTT here
+    
     /**
      * Reasons for caches to be blocked.
      */
@@ -673,6 +676,12 @@ class BaseCache : public ClockedObject
      * clean evict), but rather need to send the actual data.
      */
     const bool writebackClean;
+
+    /**
+     * Nothing to say about this really. The most I can think of is 
+     * that this will ensure that CTT is created only in L2
+     */ 
+    const bool containsCTTAndLogic; // ARYA : The boolean value that will read from the param we set in Cache.py and will help us know if we are dealing with an LLC controller or not
 
     /**
      * Writebacks from the tempBlock, resulting on the response path

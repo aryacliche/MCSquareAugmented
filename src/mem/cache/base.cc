@@ -103,6 +103,8 @@ BaseCache::BaseCache(const BaseCacheParams &p, unsigned blk_size)
       forwardSnoops(true),
       clusivity(p.clusivity),
       isReadOnly(p.is_read_only),
+      mcsquare_ctt(p.mcsquare_ctt), // ARYA : We need to initiliase the CTT from the py file as well
+      containsCTTAndLogic(p.contains_CTT_and_logic), // ARYA : reads from Cache.py and makes it a boolean
       replaceExpansions(p.replace_expansions),
       moveContractions(p.move_contractions),
       blocked(0),
@@ -1248,7 +1250,7 @@ BaseCache::access(PacketPtr pkt, CacheBlk *&blk, Cycles &lat,
     // If MCSquare operation, invalidate entries
     // If used properly, this should have been preceeded by a flush op,
     // so we don't have to worry about the data
-    if(isMCSquare(pkt->req)) {
+    if(isMCSquare(pkt->req) && !containsCTTAndLogic) { // ARYA : If we are in any cache other than L2, ignore this access
         // Invalidate destination addresses
         /*for(int i = 0; i < pkt->req->getSize(); i += blkSize) {
             CacheBlk *blk = tags->findBlock(pkt->getAddr() + i, pkt->isSecure());
@@ -1257,6 +1259,10 @@ BaseCache::access(PacketPtr pkt, CacheBlk *&blk, Cycles &lat,
         }*/
         return false;
     }
+
+    if(isMCSquare(pkt->req) && containsCTTAndLogic) { // ARYA : For L2 cache, we will add this request to the CTT table
+	// Here we will make it talk to the CTT table Simobject // TODO
+    } 
 
     if (pkt->req->isCacheMaintenance()) {
         // A cache maintenance operation is always forwarded to the
@@ -2671,6 +2677,55 @@ BaseCache::MemSidePort::recvAtomicSnoop(PacketPtr pkt)
     assert(!cache->system->bypassCaches());
 
     return cache->recvAtomicSnoop(pkt);
+}
+
+void BaseCache::clearCTT() { // ARYA : Base Cache calls this to clear the CTT
+    /**
+     * ARYA : Note that initially mcsquare used to only clear entries of the CTT if there is enough space in the BPQ, 
+     * but since we don't know that anymore, we will have to just blindly do it and hope that the BPQ will have enough space
+     */
+    // Start freeing CTT entries if needed
+    if(mcsquare_ctt->getCTTSize() >= mcsquare_ctt->ctt_free_frac * mcsquare_ctt->getMaxCTTSize() &&
+        mcsquare_ctt->ctt_freeing.size() < mcsquare_ctt->ctt_freeing_max) {
+        Addr candidate = mcsquare_ctt->getAddrToFree(getAddrRanges());
+        if(candidate) {
+            DPRINTF(MCSquare, "%d exceeds threshold of CTT size %d! Freeing entries; Candidate %lx\n", 
+                    mcsquare_ctt->getCTTSize(), (int)(mcsquare_ctt->ctt_free_frac * 
+                    mcsquare_ctt->getMaxCTTSize()), candidate);
+
+            // ARYA : Code that had the privilege to know what is happening at BPQ -- comented it out
+            // TODO : Make it so that we make a request that goes into the MSHR. So use it the same way as any other cacheline
+            
+            // // // unsigned size = 64;
+            // // // uint32_t burst_size = dram->bytesPerBurst();
+            // // // unsigned offset = candidate & (burst_size - 1); // ARYA : [?] This is a faster way to do modulo
+            // // // unsigned int pkt_count = divCeil(offset + size, burst_size);
+// // 
+            // // // if (readQueueFull(pkt_count)) {
+            // // //     DPRINTF(MCSquare, "Trying to clear CTT but read queue full\n");
+            // // //     return;
+            // // // }
+
+            // Create read to src request
+            auto req = std::make_shared<Request>(candidate, 64, 
+                Request::MEM_ELIDE_WRITE_SRC, Request::funcRequestorId);
+            auto bouncePkt = Packet::createRead(req); // ARYA [?] This created a packet. Let's just add it to our MSHR
+            bouncePkt->allocate(); // ARYA [?] Allocates memory to this packet
+
+            mcsquare_ctt->ctt_freeing[candidate] = -1;
+
+            // ARYA : We will now do a recvTimingReq to the memSidePort. Since this is a MCSquare pkt, it will be directly added to the MSHR
+            recvTimingReq(bouncePkt); // Jai mata di. I hope this works
+            // if (!addToReadQueue(bouncePkt, pkt_count, dram)) {
+            //     // If we are not already scheduled to get a request out of the
+            //     // queue, do so now
+            //     if (!nextReqEvent.scheduled()) {
+            //         DPRINTF(MemCtrl, "Request scheduled immediately\n");
+            //         schedule(nextReqEvent, curTick());
+            //     }
+            // }
+        }
+    }
 }
 
 void

@@ -81,8 +81,8 @@ single_launch_gem5:
 		--fast-forward=1000000000000000000 --mem-size=${MEM_SIZE} --cpu-type=${GEM5_CPU} \
 		--l1i-hwp-type=StridePrefetcher ${PREFETCH} --command-line=${CMD_LINE} --ctt-size=${CTT_SIZE} \
 		--ctt-frac=${CTT_FRAC} --ctt-lat=${CTT_LAT} --cpu-clock="4GHz" --mem-type="DDR4_2400_8x8" --bpq-size=${BPQ_SIZE} \
-		--wb-reads=${DEST_WB} --kernel=${GEM5_KERNEL} --disk-image=${GEM5_IMG} -n ${NCPUS} --caches --l2cache --ctt-free-size=${CTT_FREE_SIZE} \
-		--mem-channels=${MEM_CHAN} --script=${SCRIPT} > ${RESULTS}/${TEST}/fullout_${GEM5_CPU}.txt 2> ${RESULTS}/${TEST}/err_${GEM5_CPU}.txt;
+		--wb-reads=${DEST_WB} --kernel=${GEM5_KERNEL} --disk-image=${GEM5_IMG} -n ${NCPUS} --caches --l2cache --l2_size 2016KiB --ctt-free-size=${CTT_FREE_SIZE} \
+		--mem-channels=${MEM_CHAN} --script=${SCRIPT} > ${RESULTS}/${TEST}/fullout_${GEM5_CPU}.txt 2> ${RESULTS}/${TEST}/err_${GEM5_CPU}.txt; # ARYA : Changed L2 size to 2016 KiB = (2MiB - 32KiB) because we are giving entries to CTT
 
 single_launch_gem5_debug:
 	mkdir -p ${RESULTS}/${TEST};
@@ -208,12 +208,9 @@ launch_protobuf_MCSquareOnly:
 	# Here we don't care about changing the copy flush fraction really. We just want a feel for it.
 	sudo ls; \
 	$(MAKE) compile_gem5; \
-	for ctt_frac in ${PB_FLUSH_FRAC}; do \
-		$(MAKE) single_launch_gem5 TEST=protobuf/protobuf-mc-1024-$${ctt_frac} \
+	$(MAKE) single_launch_gem5 TEST=protobuf/protobuf-mc-1024-0.1 \
 			SCRIPT=./scripts/protobuf/protobuf-mc-run.sh CTT_FREE_SIZE=1 \
-			CTT_SIZE=1024 CTT_FRAC=$${ctt_frac} CTT_LAT="646ps" & \
-	done; \
-	wait;
+			CTT_SIZE=1024 CTT_FRAC=0.1 CTT_LAT="646ps"
 
 launch_protobuf_Others:
 	sudo ls; \

@@ -293,7 +293,7 @@ class MemCtrl : public qos::MemCtrl
     bool retryWrReq;
     bool srcWritePause;
 
-    /**
+    /** // TODO : Figure out if this references the CTT
      * Check whether the incoming MCSquare request 
      * violates ongoing operations in the memctrl.
      */
@@ -789,7 +789,7 @@ class MemCtrl : public qos::MemCtrl
     virtual void startup() override;
     virtual void drainResume() override;
 
-    MCSquare *mcsquare;
+    MCSquare_BPQ *mcsquare_bpq;
 
   protected:
 

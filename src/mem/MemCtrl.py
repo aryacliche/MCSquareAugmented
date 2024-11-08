@@ -41,7 +41,7 @@
 from m5.params import *
 from m5.proxy import *
 from m5.objects.QoSMemCtrl import *
-from m5.objects.MCSquare import MCSquare
+from m5.objects.MCSquare_BPQ import MCSquare_BPQ # ARYA : I am fibbing so hard on this lmao
 
 # Enum for memory scheduling algorithms, currently First-Come
 # First-Served and a First-Row Hit then First-Come First-Served
@@ -101,4 +101,4 @@ class MemCtrl(QoSMemCtrl):
     command_window = Param.Latency("10ns", "Static backend latency")
     disable_sanity_check = Param.Bool(False, "Disable port resp Q size check")
 
-    mcsquare = Param.MCSquare(MCSquare(), "Memcpy elision handler")
+    mcsquare_bpq = Param.MCSquare_BPQ(MCSquare_BPQ(), "Memcpy elision handler")

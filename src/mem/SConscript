@@ -160,4 +160,5 @@ DebugFlag("MemChecker")
 DebugFlag("MemCheckerMonitor")
 DebugFlag("QOS")
 
-DebugFlag('MCSquare')
+DebugFlag('MCSquare_CTT')
+DebugFlag('MCSquare_BPQ')

@@ -44,6 +44,7 @@ from m5.objects.ClockedObject import ClockedObject
 from m5.objects.Compressors import BaseCacheCompressor
 from m5.objects.Prefetcher import BasePrefetcher
 from m5.objects.ReplacementPolicies import *
+from m5.objects.MCSquare_CTT import MCSquare_CTT # ARYA : I am fibbing so hard on this lmao
 from m5.objects.Tags import *
 
 # Enum for cache clusivity, currently mostly inclusive or mostly
@@ -104,6 +105,7 @@ class BaseCache(ClockedObject):
     write_buffers = Param.Unsigned(8, "Number of write buffers")
 
     is_read_only = Param.Bool(False, "Is this cache read only (e.g. inst)")
+    contains_CTT_and_logic = Param.Bool(False, "Does this cache house CTT + controller have logic for it (e.g. LLC)")       # ARYA : So that we can selectively add features to just L2 caches
 
     prefetcher = Param.BasePrefetcher(NULL, "Prefetcher attached to cache")
     prefetch_on_access = Param.Bool(
@@ -172,6 +174,8 @@ class BaseCache(ClockedObject):
     # in the current cache. Typically, this would be enabled in the
     # data cache.
     write_allocator = Param.WriteAllocator(NULL, "Write allocator")
+
+    mcsquare_ctt = Param.MCSquare_CTT(MCSquare_CTT(contains_CTT_and_logic, "Memcpy elision handler")
 
 
 class Cache(BaseCache):

@@ -76,6 +76,7 @@ class L2Cache(Cache):
     mshrs = 20
     tgts_per_mshr = 12
     write_buffers = 8
+    contains_CTT_and_logic = True # ARYA : This means L2 will have CTT and corresponding logic to maintain it.
 
 
 class IOCache(Cache):

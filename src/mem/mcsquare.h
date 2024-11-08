@@ -15,7 +15,8 @@
 #include "params/MemCtrl.hh"
 #include "sim/eventq.hh"
 #include "sim/sim_object.hh"
-#include "params/MCSquare.hh"
+#include "params/MCSquare_BPQ.hh"
+#include "params/MCSquare_CTT.hh"
 #include "debug/MCSquare.hh"
 
 namespace gem5
@@ -33,7 +34,7 @@ class MemInterface;
 class DRAMInterface;
 class NVMInterface;
 
-class MCSquare : public SimObject {
+class MCSquare_CTT : public SimObject {
     const int ctt_max_sz;
     const Tick ctt_acc_lat;
     struct CTTableEntry {
@@ -50,6 +51,75 @@ class MCSquare : public SimObject {
     };
     std::list<CTTableEntry> m_ctt;
 
+    // Whether read to dest should create a duplicate write packet
+    const int wb_dest_reads;
+    
+  public:
+    const double ctt_free_frac;
+    std::map<Addr, int> ctt_freeing;
+    int ctt_freeing_max;
+
+    int wbDestReads() {
+      return wb_dest_reads;
+    }
+
+    enum Types {
+      TYPE_NONE = 0,
+      TYPE_SRC,
+      TYPE_DEST,
+    };
+
+    MCSquare_CTT(const MCSquare_CTTParams &params) : SimObject(params),
+      wb_dest_reads(params.wb_dest_reads), ctt_free_frac(params.ctt_free),
+      stats(*this) {
+        printf("Created MCSquare_CTT (%d size, %lu ticks, %.2f%% free frac, %d freeing)",
+          ctt_max_sz, ctt_acc_lat, ctt_free_frac * 100, ctt_freeing_max);
+        ctt_freeing.clear();
+      }
+
+    // CTT management functions
+    void insertEntry(Addr dest, Addr src, uint64_t size);
+    void deleteEntry(Addr dest, uint64_t size);
+    void splitEntry(PacketPtr pkt);
+    Addr getAddrToFree(AddrRangeList addrList);
+    // Check CTT
+    Types contains(Addr addr, size_t size);
+    Types contains(PacketPtr pkt);
+    bool isSrc(PacketPtr pkt);
+    bool isDest(PacketPtr pkt);
+    size_t getCTTSize() { return m_ctt.size(); }
+
+    Tick getCTTPenalty() { return ctt_acc_lat; }
+
+    int getMaxCTTSize() { return ctt_max_sz; }
+
+    struct CtrlStats : public statistics::Group // TODO : Figure out what to remove from this
+    {
+        CtrlStats(MCSquare &ctrl);
+
+        void regStats() override;
+
+        MCSquare &ctrl;
+
+        // All statistics that the model needs to capture
+        statistics::Scalar maxEntries;
+        statistics::Scalar sizeElided;
+        statistics::Scalar destReadSizeCPU;
+        statistics::Scalar destWriteSizeCPU;
+        statistics::Scalar srcReadSizeCPU;
+        statistics::Scalar srcWriteSizeCPU;
+        statistics::Scalar destReadSizeBounce;
+        statistics::Scalar destWriteSizeBounce;
+        statistics::Scalar srcReadSizeBounce;
+        statistics::Scalar srcWriteSizeBounce;
+        statistics::Scalar srcWritesBlocked;
+        statistics::Scalar memElideBlockedCTTFull;
+	// ARYA : [OFFSET_STUDY] Adding our distribution statistic
+	statistics::Distribution numMisalignedReqs;
+    } stats;
+};
+
+class MCSquare_BPQ : public SimObject {
     const int bpq_max_sz;
     const Tick bpq_acc_lat;
     class BouncePendingQueue {
@@ -136,46 +206,18 @@ class MCSquare : public SimObject {
       }
     };
     
-    // Whether read to dest should create a duplicate write packet
-    const int wb_dest_reads;
   public:
-    const double ctt_free_frac;
-    std::map<Addr, int> ctt_freeing;
-    int ctt_freeing_max;
-
-    int wbDestReads() {
-      return wb_dest_reads;
-    }
-
     enum Types {
       TYPE_NONE = 0,
       TYPE_SRC,
       TYPE_DEST,
     };
 
-    MCSquare(const MCSquareParams &params) : SimObject(params),
-      ctt_max_sz(params.ctt_size), ctt_acc_lat(params.ctt_penalty), 
+    MCSquare_BPQ(const MCSquareParams &params) : SimObject(params),
       bpq_max_sz(params.bpq_size), bpq_acc_lat(params.bpq_penalty), 
-      wb_dest_reads(params.wb_dest_reads), ctt_free_frac(params.ctt_free),
-      ctt_freeing_max(params.ctt_freeing_max),
       stats(*this) {
-        printf("Created MCSquare with: CTT (%d size, %lu ticks, %.2f%% free frac, %d freeing), ",
-          ctt_max_sz, ctt_acc_lat, ctt_free_frac * 100, ctt_freeing_max);
-        printf("BPQ (%d size, %lu ticks)\n", bpq_max_sz, bpq_acc_lat);
-        ctt_freeing.clear();
+        printf("Created MCSquare_BPQ (%d size, %lu ticks)\n", bpq_max_sz, bpq_acc_lat);
       }
-
-    // CTT management functions
-    void insertEntry(Addr dest, Addr src, uint64_t size);
-    void deleteEntry(Addr dest, uint64_t size);
-    void splitEntry(PacketPtr pkt);
-    Addr getAddrToFree(AddrRangeList addrList);
-    // Check CTT
-    Types contains(Addr addr, size_t size);
-    Types contains(PacketPtr pkt);
-    bool isSrc(PacketPtr pkt);
-    bool isDest(PacketPtr pkt);
-    size_t getCTTSize() { return m_ctt.size(); }
 
     // Bouncing related functions
     bool bounceAddr(PacketPtr pkt);
@@ -183,19 +225,17 @@ class MCSquare : public SimObject {
 
     BouncePendingQueue m_bpq;
 
-    Tick getCTTPenalty() { return ctt_acc_lat; }
     Tick getBPQPenalty() { return bpq_acc_lat; }
 
-    int getMaxCTTSize() { return ctt_max_sz; }
     int getMaxBPQSize() { return bpq_max_sz; }
 
-    struct CtrlStats : public statistics::Group
+    struct CtrlStats : public statistics::Group // TODO : Figure out what to remove from this
     {
-        CtrlStats(MCSquare &ctrl);
+        CtrlStats(MCSquare_BPQ &ctrl);
 
         void regStats() override;
 
-        MCSquare &ctrl;
+        MCSquare_BPQ &ctrl;
 
         // All statistics that the model needs to capture
         statistics::Scalar maxEntries;
@@ -209,10 +249,8 @@ class MCSquare : public SimObject {
         statistics::Scalar srcReadSizeBounce;
         statistics::Scalar srcWriteSizeBounce;
         statistics::Scalar srcWritesBlocked;
-        statistics::Scalar memElideBlockedCTTFull;
-	// ARYA : [OFFSET_STUDY] Adding our distribution statistic
-	statistics::Distribution numMisalignedReqs;
     } stats;
+    
 };
 
 } // namespace memory

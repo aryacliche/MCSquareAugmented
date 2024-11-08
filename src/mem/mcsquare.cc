@@ -31,7 +31,7 @@ namespace memory
 {
 
 void
-MCSquare::insertEntry(Addr dest, Addr src, uint64_t size)
+MCSquare_CTT::insertEntry(Addr dest, Addr src, uint64_t size)
 {
     if(size <= 0)
         return;
@@ -187,7 +187,7 @@ MCSquare::insertEntry(Addr dest, Addr src, uint64_t size)
 }
 
 void
-MCSquare::deleteEntry(Addr dest, uint64_t size)
+MCSquare_CTT::deleteEntry(Addr dest, uint64_t size)
 {
     // Shortcut to reset the CTT in between process runs
     if(size == (uint64_t)1) {
@@ -251,7 +251,7 @@ MCSquare::deleteEntry(Addr dest, uint64_t size)
 }
 
 void
-MCSquare::splitEntry(PacketPtr pkt)
+MCSquare_CTT::splitEntry(PacketPtr pkt)
 {
     assert(pkt->getSize() == 64 || pkt->req->getFlags() & Request::UNCACHEABLE);
     assert((pkt->getAddr() & 63) == 0 || pkt->req->getFlags() & Request::UNCACHEABLE);
@@ -260,7 +260,7 @@ MCSquare::splitEntry(PacketPtr pkt)
 }
 
 Addr 
-MCSquare::getAddrToFree(AddrRangeList addrList) 
+MCSquare_CTT::getAddrToFree(AddrRangeList addrList) 
 {
     Addr minAddr = 0;
     uint64_t minSize = 0;
@@ -280,8 +280,8 @@ MCSquare::getAddrToFree(AddrRangeList addrList)
     return minAddr;
 }
 
-MCSquare::Types
-MCSquare::contains(Addr addr, size_t size)
+MCSquare_CTT::Types
+MCSquare_CTT::contains(Addr addr, size_t size)
 {
     for(auto i = m_ctt.begin(); i != m_ctt.end(); ++i) {
         if(RangeSize(addr, size).intersects(RangeSize(i->src, i->size))) {
@@ -298,8 +298,8 @@ MCSquare::contains(Addr addr, size_t size)
     return Types::TYPE_NONE;
 }
 
-MCSquare::Types
-MCSquare::contains(PacketPtr pkt)
+MCSquare_CTT::Types
+MCSquare_CTT::contains(PacketPtr pkt)
 {
     for(auto i = m_ctt.begin(); i != m_ctt.end(); ++i) {
         if(pkt->getAddrRange().intersects(RangeSize(i->src, i->size))) {
@@ -325,7 +325,7 @@ MCSquare::contains(PacketPtr pkt)
 }
 
 bool
-MCSquare::isSrc(PacketPtr pkt)
+MCSquare_CTT::isSrc(PacketPtr pkt)
 {
     for(auto i = m_ctt.begin(); i != m_ctt.end(); ++i) {
         if(pkt->getAddrRange().intersects(RangeSize(i->src, i->size))) {
@@ -336,7 +336,7 @@ MCSquare::isSrc(PacketPtr pkt)
 }
 
 bool
-MCSquare::isDest(PacketPtr pkt)
+MCSquare_CTT::isDest(PacketPtr pkt)
 {
     for(auto i = m_ctt.begin(); i != m_ctt.end(); ++i) {
         if(pkt->getAddrRange().intersects(RangeSize(i->dest, i->size))) {
@@ -350,7 +350,7 @@ MCSquare::isDest(PacketPtr pkt)
 }
 
 bool
-MCSquare::bounceAddr(PacketPtr pkt)
+MCSquare_BPQ::bounceAddr(PacketPtr pkt)
 {
     // First move dest_offset to appropriate position
     if(pkt->mc_dest_offset == -1 || pkt->mc_dest_offset == (uint64_t)18446744073709551615)
@@ -437,7 +437,7 @@ MCSquare::bounceAddr(PacketPtr pkt)
 }
 
 std::vector<PacketPtr> 
-MCSquare::genDestReads(PacketPtr srcPkt) 
+MCSquare_BPQ::genDestReads(PacketPtr srcPkt) 
 {
     std::vector<PacketPtr> destReads;
     for(auto i = m_ctt.begin(); i != m_ctt.end(); ++i) {
@@ -636,7 +636,42 @@ MCSquare::genDestReads(PacketPtr srcPkt)
     return destReads;
 }
 
-MCSquare::CtrlStats::CtrlStats(MCSquare &_ctrl)
+// TODO : Decide which stats go to which class. Right now I am giving both to both of them
+MCSquare_CTT::CtrlStats::CtrlStats(MCSquare &_ctrl)
+    : statistics::Group(&_ctrl),
+    ctrl(_ctrl),
+    ADD_STAT(maxEntries, statistics::units::Count::get(),
+             "Maximum size of elision table during simulation"),
+    ADD_STAT(sizeElided, statistics::units::Count::get(),
+             "Total size (in bytes) of data elided"),
+    ADD_STAT(destReadSizeCPU, statistics::units::Count::get(),
+             "Amount (in bytes) of destination data read by CPU"),
+    ADD_STAT(destWriteSizeCPU, statistics::units::Count::get(),
+             "Amount (in bytes) of destination data written by CPU"),
+    ADD_STAT(srcReadSizeCPU, statistics::units::Count::get(),
+             "Amount (in bytes) of src data read by CPU"),
+    ADD_STAT(srcWriteSizeCPU, statistics::units::Count::get(),
+             "Amount (in bytes) of src data written by CPU"),
+    ADD_STAT(destReadSizeBounce, statistics::units::Count::get(),
+             "Amount (in bytes) of destination data read by bounce"),
+    ADD_STAT(destWriteSizeBounce, statistics::units::Count::get(),
+             "Amount (in bytes) of destination data written by bounce"),
+    ADD_STAT(srcReadSizeBounce, statistics::units::Count::get(),
+             "Amount (in bytes) of src data read by bounce"),
+    ADD_STAT(srcWriteSizeBounce, statistics::units::Count::get(),
+             "Amount (in bytes) of src data written by bounce"),
+    ADD_STAT(srcWritesBlocked, statistics::units::Count::get(),
+             "Number of writes to src blocked"),
+    // ARYA : [OFFSET_STUDY] Displaying the final statistics
+    ADD_STAT(numMisalignedReqs, statistics::units::Count::get(),
+             "Number of CTT entries that are misaligned"),
+    ADD_STAT(memElideBlockedCTTFull, statistics::units::Count::get(),
+             "Number of mem elides blocked due to CTT being full")
+             
+{
+}
+
+MCSquare_BPQ::CtrlStats::CtrlStats(MCSquare &_ctrl)
     : statistics::Group(&_ctrl),
     ctrl(_ctrl),
     ADD_STAT(maxEntries, statistics::units::Count::get(),
@@ -671,7 +706,7 @@ MCSquare::CtrlStats::CtrlStats(MCSquare &_ctrl)
 }
 
 void
-MCSquare::CtrlStats::regStats()
+MCSquare_CTT::CtrlStats::regStats() // ARYA : This is one that I know only should go to the CTT
 {
     using namespace statistics;
 
