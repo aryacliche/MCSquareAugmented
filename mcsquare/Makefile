@@ -215,6 +215,17 @@ launch_protobuf_MCSquareOnly:
 	done; \
 	wait;
 
+launch_protobuf_MCSquareOnly_debug:
+	# Here we don't care about changing the copy flush fraction really. We just want a feel for it.
+	sudo ls; \
+	$(MAKE) compile_gem5; \
+	for ctt_frac in ${PB_FLUSH_FRAC}; do \
+		$(MAKE) single_launch_gem5_debug TEST=protobuf/protobuf-mc-1024-$${ctt_frac} \
+			SCRIPT=./scripts/protobuf/protobuf-mc-run.sh CTT_FREE_SIZE=1 \
+			CTT_SIZE=1024 CTT_FRAC=$${ctt_frac} CTT_LAT="646ps" & \
+	done; \
+	wait;
+
 launch_protobuf_Others:
 	sudo ls; \
 	$(MAKE) compile_gem5; \
