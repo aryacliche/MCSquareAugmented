@@ -215,6 +215,15 @@ launch_protobuf_MCSquareOnly:
 	done; \
 	wait;
 
+launch_protobuf_MCSquareOnly_single_case: # This is for the case where CTT is at the LLC
+	# Here we don't care about changing the copy flush fraction really. We just want a feel for it.
+	sudo ls; \
+	$(MAKE) compile_gem5; \
+	$(MAKE) single_launch_gem5 TEST=protobuf/protobuf-mc-1024-$${ctt_frac} \
+			SCRIPT=./scripts/protobuf/protobuf-mc-run.sh CTT_FREE_SIZE=1 \
+			CTT_SIZE=1024 CTT_FRAC=0.95 CTT_LAT="0ps" & \
+	wait;
+
 launch_protobuf_MCSquareOnly_debug:
 	# Here we don't care about changing the copy flush fraction really. We just want a feel for it.
 	sudo ls; \
