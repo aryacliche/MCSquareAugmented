@@ -49,8 +49,8 @@ umount_img:
 ############################################################
 
 NCPUS    ?= 8
-MEM_SIZE ?= 3GB 	# ARYA : Increasing size of Memory
-MEM_CHAN ?= 2		# ARYA : Increasing number of DIMMs
+MEM_SIZE ?= 3GB
+MEM_CHAN ?= 2	
 PREFETCH ?= --l1d-hwp-type=StridePrefetcher --l2-hwp-type=StridePrefetcher
 CTT_SIZE ?= 2048
 CTT_FRAC ?= 0.5
@@ -90,7 +90,8 @@ single_launch_gem5_debug:
 	sudo gdb -x run.sh --args ../build/X86/gem5.opt --debug-flags=PseudoInst,MCSquare -d ${RESULTS}/${TEST} ./fs.py \
 		--fast-forward=1000000000000000000 --mem-size=${MEM_SIZE} --cpu-type=${GEM5_CPU} \
 		--l1i-hwp-type=StridePrefetcher ${PREFETCH} --command-line=${CMD_LINE} --ctt-size=${CTT_SIZE} \
-		--ctt-frac=${CTT_FRAC} --ctt-lat=${CTT_LAT} --cpu-clock="4GHz" --mem-type="DDR4_2400_8x8" --bpq-size=${BPQ_SIZE} \
+		--ctt-frac=${CTT_FRAC} --ctt-lat=${CTT_LAT} \
+	       	--cpu-clock="4GHz" --mem-type="DDR4_2400_8x8" --bpq-size=${BPQ_SIZE} \
 		--wb-reads=${DEST_WB} --kernel=${GEM5_KERNEL} --disk-image=${GEM5_IMG} -n ${NCPUS} --caches --l2cache --ctt-free-size=${CTT_FREE_SIZE} \
 		--mem-channels=${MEM_CHAN} --script=${SCRIPT} > ${RESULTS}/${TEST}/fullout_${GEM5_CPU}.txt 2> ${RESULTS}/${TEST}/err_${GEM5_CPU}.txt;
 
@@ -184,6 +185,9 @@ extract_micro_rand:
 PROTOBUF_TESTS ?= protobuf-mc protobuf protobuf-zio
 PB_CTT_SIZE=1024 2048 4096
 PB_FLUSH_FRAC=0.1 0.25 0.5 0.75 0.9
+mem_size_range = 3GB 32GB
+mem_chan_range = 2 8
+ctt_latency_range = 0ps 979ps
 
 launch_protobuf:
 	sudo ls; \
@@ -221,9 +225,27 @@ launch_protobuf_MCSquareOnly_single_case: # This is for the case where CTT is at
 	$(MAKE) compile_gem5; \
 	$(MAKE) single_launch_gem5 TEST=protobuf/protobuf-mc-1024-llc-ctt-$${MEM_SIZE}-$${MEM_CHAN} \
 			SCRIPT=./scripts/protobuf/protobuf-mc-run.sh CTT_FREE_SIZE=1 \
-			CTT_SIZE=1024 CTT_FRAC=0.95 CTT_LAT="0ps" & \
+			CTT_SIZE=1024 CTT_FRAC=0.95 CTT_LAT="0ps" \
 	wait;
 
+launch_protobuf_MCSquare_all_cases:
+	sudo ls; \
+	$(MAKE) compile_gem5; \
+	for DEST_WB in 3 0; do \
+		for ctt_latency in $(ctt_latency_range); do \
+			for index in 0 1; do \
+				mem_size=$$(echo $(mem_size_range) | cut -d' ' -f$$((index + 1))); \
+				mem_chan=$$(echo $(mem_chan_range) | cut -d' ' -f$$((index + 1))); \
+				$$(MAKE) single_launch_gem5 TEST=protobuf/protobuf-mc-1024-llc-ctt-$$mem_size-$$mem_chan \
+					SCRIPT=./scripts/protobuf/protobuf-mc-run.sh CTT_FREE_SIZE=1 \
+					CTT_SIZE=1024 CTT_FRAC=0.95 CTT_LAT=$$ctt_latency DEST_WB=$$DEST_WB \
+					MEM_SIZE=$$mem_size MEM_CHAN=$$mem_chan & \
+			done; \
+			wait; \
+		done; \
+	done; \
+	wait
+	
 launch_protobuf_MCSquareOnly_debug:
 	# Here we don't care about changing the copy flush fraction really. We just want a feel for it.
 	sudo ls; \
