@@ -583,6 +583,14 @@ class MemCtrl : public qos::MemCtrl
         statistics::Scalar servicedByWrQ;
         statistics::Scalar mergedWrBursts;
         statistics::Scalar neitherReadNorWriteReqs;
+	// ARYA : Adding trackers for communication traffic
+        statistics::Scalar num_MEM_ELIDE;
+        statistics::Scalar num_MEM_ELIDE_FREE;
+        statistics::Scalar num_MEM_ELIDE_DEST_WB;
+        statistics::Scalar num_MEM_ELIDE_WRITE_DEST;
+        statistics::Scalar num_MEM_ELIDE_WRITE_SRC;
+        statistics::Scalar num_MEM_ELIDE_REDIRECT_SRC;
+	
         // Average queue lengths
         statistics::Average avgRdQLen;
         statistics::Average avgWrQLen;

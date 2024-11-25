@@ -49,8 +49,8 @@ umount_img:
 ############################################################
 
 NCPUS    ?= 8
-MEM_SIZE ?= 32GB 	# ARYA : Increasing size of Memory
-MEM_CHAN ?= 6		# ARYA : Increasing number of DIMMs
+MEM_SIZE ?= 3GB 	# ARYA : Increasing size of Memory
+MEM_CHAN ?= 2		# ARYA : Increasing number of DIMMs
 PREFETCH ?= --l1d-hwp-type=StridePrefetcher --l2-hwp-type=StridePrefetcher
 CTT_SIZE ?= 2048
 CTT_FRAC ?= 0.5
@@ -219,7 +219,7 @@ launch_protobuf_MCSquareOnly_single_case: # This is for the case where CTT is at
 	# Here we don't care about changing the copy flush fraction really. We just want a feel for it.
 	sudo ls; \
 	$(MAKE) compile_gem5; \
-	$(MAKE) single_launch_gem5 TEST=protobuf/protobuf-mc-1024-$${ctt_frac} \
+	$(MAKE) single_launch_gem5 TEST=protobuf/protobuf-mc-1024-llc-ctt-$${MEM_SIZE}-$${MEM_CHAN} \
 			SCRIPT=./scripts/protobuf/protobuf-mc-run.sh CTT_FREE_SIZE=1 \
 			CTT_SIZE=1024 CTT_FRAC=0.95 CTT_LAT="0ps" & \
 	wait;
