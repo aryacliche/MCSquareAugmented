@@ -49,8 +49,8 @@ umount_img:
 ############################################################
 
 NCPUS    ?= 8
-MEM_SIZE ?= 3GB
-MEM_CHAN ?= 2
+MEM_SIZE ?= 32GB 	# ARYA : Increasing size of Memory
+MEM_CHAN ?= 6		# ARYA : Increasing number of DIMMs
 PREFETCH ?= --l1d-hwp-type=StridePrefetcher --l2-hwp-type=StridePrefetcher
 CTT_SIZE ?= 2048
 CTT_FRAC ?= 0.5
