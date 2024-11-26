@@ -532,6 +532,20 @@ MemCtrl::recvTimingReq(PacketPtr pkt)
     }
     prevArrival = curTick();
 
+    // ARYA : We want to log the number of things that reach the CTT
+    if (pkt->req->getFlags() == Request::MEM_ELIDE)
+	stats.num_MEM_ELIDE++;
+    else if (pkt->req->getFlags() == Request::MEM_ELIDE_FREE)
+	stats.num_MEM_ELIDE_FREE++;
+    else if (pkt->req->getFlags() == Request::MEM_ELIDE_REDIRECT_SRC)
+	stats.num_MEM_ELIDE_REDIRECT_SRC++;
+    else if (pkt->req->getFlags() == Request::MEM_ELIDE_WRITE_DEST)
+	stats.num_MEM_ELIDE_WRITE_DEST++;
+    else if (pkt->req->getFlags() == Request::MEM_ELIDE_WRITE_SRC)
+	stats.num_MEM_ELIDE_WRITE_SRC++;
+    else if (pkt->req->getFlags() == Request::MEM_ELIDE_DEST_WB)
+	stats.num_MEM_ELIDE_DEST_WB++;
+
     if(isMCSquare(pkt)) {
         if(pkt->mc_dest_offset >= 100) { // ARYA [?] Why the fuck is there is a 100?
             bool canHandle = pkt->mc_dest_offset - 100;
@@ -1825,6 +1839,20 @@ MemCtrl::CtrlStats::CtrlStats(MemCtrl &_ctrl)
     ADD_STAT(avgWrQLen, statistics::units::Rate<
                 statistics::units::Count, statistics::units::Tick>::get(),
              "Average write queue length when enqueuing"),
+
+    // ARYA : Printing the communication traffic stats
+    ADD_STAT(num_MEM_ELIDE, statistics::units::Count::get(),
+             "Number of MEM_ELIDE"),
+    ADD_STAT(num_MEM_ELIDE_FREE, statistics::units::Count::get(),
+             "Number of MEM_ELIDE_FREE"),
+    ADD_STAT(num_MEM_ELIDE_REDIRECT_SRC, statistics::units::Count::get(),
+             "Number of MEM_REDIRECT_SRC"),
+    ADD_STAT(num_MEM_ELIDE_WRITE_DEST, statistics::units::Count::get(),
+             "Number of MEM_ELIDE_WRITE_DEST"),
+    ADD_STAT(num_MEM_ELIDE_WRITE_SRC, statistics::units::Count::get(),
+             "Number of MEM_ELIDE_WRITE_SRC"),
+    ADD_STAT(num_MEM_ELIDE_DEST_WB, statistics::units::Count::get(),
+             "Number of MEM_ELIDE_DEST_WB"),
 
     ADD_STAT(RdQOccupancyDist, statistics::units::Count::get(),
              "Distribution of read queue length when enqueueing"),
