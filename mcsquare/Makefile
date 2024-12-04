@@ -56,7 +56,7 @@ CTT_SIZE ?= 2048
 CTT_FRAC ?= 0.5
 CTT_LAT  ?= "787ps"
 BPQ_SIZE ?= 8
-DEST_WB  ?= 3
+DEST_WB  ?= 0
 CTT_FREE_SIZE ?= 4
 
 CMD_LINE ?= "earlyprintk=ttyS0 console=ttyS0 lpj=7999923 root=/dev/hda1 numa=on"
@@ -223,10 +223,9 @@ launch_protobuf_MCSquareOnly_single_case: # This is for the case where CTT is at
 	# Here we don't care about changing the copy flush fraction really. We just want a feel for it.
 	sudo ls; \
 	$(MAKE) compile_gem5; \
-	$(MAKE) single_launch_gem5 TEST=protobuf/protobuf-mc-1024-llc-ctt-$${MEM_SIZE}-$${MEM_CHAN} \
+	$(MAKE) single_launch_gem5 TEST=protobuf/protobuf-mc-4096-llc-ctt-no-wb-3GB-2chan \
 			SCRIPT=./scripts/protobuf/protobuf-mc-run.sh CTT_FREE_SIZE=1 \
-			CTT_SIZE=1024 CTT_FRAC=0.95 CTT_LAT="0ps" \
-	wait;
+			CTT_SIZE=4096 CTT_FRAC=0.95 CTT_LAT="0ps"
 
 launch_protobuf_MCSquare_all_cases:
 	sudo ls; \
